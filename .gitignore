@@ -1,0 +1,6 @@
+.terraform.lock.hcl
+../terraform-2022-03-21/terraform.tfvars
+.idea/
+README.md
+
+
