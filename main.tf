@@ -159,10 +159,7 @@ resource "aws_instance" "public_ec2" {
     private_key = file(var.private_key_location)
   }
   provisioner "remote-exec" {
-    inline = [
-      "export ENV=dev",
-      "mkdir newDir"
-    ]
+    script = file("entry-script.sh")
   }
 
   tags = {
