@@ -158,8 +158,18 @@ resource "aws_instance" "public_ec2" {
     user = "ec2-user"
     private_key = file(var.private_key_location)
   }
+  //to copy te file to remote
+  provisioner "file" {
+    source = "entry-script.sh"
+    destination="home/ec2-user/entry-script-on-ec2.sh"
+  }
+
   provisioner "remote-exec" {
-    script = file("entry-script.sh")
+    script = file("entry-script-on-ec2.sh")
+  }
+
+  provisioner "local-exec" {
+    command = "echo ${self.public_ip} > output.txt"
   }
 
   tags = {
