@@ -18,7 +18,7 @@ variable "env" {}
 variable "private_subnet_cidr" {}
 variable "public_subnet_cidr" {}
 variable "instance_type" {}
-
+variable "public_key_location" {}
 variable "avail_zone" {}
 
 //vpc
@@ -148,10 +148,15 @@ resource "aws_instance" "public_ec2" {
   vpc_security_group_ids = [aws_security_group.public_ec2_sg.id]
   availability_zone = var.avail_zone
   associate_public_ip_address = true
-  key_name = "dev-key"
+  key_name = aws_key_pair.ssh-key.key_name
 
   tags = {
     Name = "${var.env}-public_ec2"
   }
 }
 
+
+resource "aws_key_pair" "ssh-key" {
+  key_name = "dev-key"
+  public_key = file(var.public_key_location)
+}
