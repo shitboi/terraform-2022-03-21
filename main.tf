@@ -149,12 +149,18 @@ resource "aws_instance" "public_ec2" {
   availability_zone = var.avail_zone
   associate_public_ip_address = true
   key_name = aws_key_pair.ssh-key.key_name
+  user_data = <<EOF
+                 #!/bin/bash
+                  sudo yum update -y && sudo yum install docker
+                  sudo systemctl start docker
+                  sudo usermod -aG docker ec2-user
+                  docker run -p 8080:80 nginx
+              EOF
 
   tags = {
     Name = "${var.env}-public_ec2"
   }
 }
-
 
 resource "aws_key_pair" "ssh-key" {
   key_name = "dev-key"
