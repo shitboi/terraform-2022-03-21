@@ -12,172 +12,30 @@ provider "aws" {
   region = var.region
 }
 
-variable "region" {}
-variable "vpc_cidr" {}
-variable "env" {}
-variable "private_subnet_cidr" {}
-variable "public_subnet_cidr" {}
-variable "instance_type" {}
-variable "public_key_location" {}
-variable "avail_zone" {}
-variable "private_key_location" {}
-
-//vpc
-resource "aws_vpc" "myapp-vpc" {
-  cidr_block = var.vpc_cidr
-  tags = {
-    Name = "${var.env}-vpc"
-  }
+module "vpc" {
+  source   = "./modules/vpc"
+  env      = var.env
+  vpc_cidr = var.vpc_cidr
 }
 
-resource "aws_subnet" "myapp_public_subnet" {
-  vpc_id = aws_vpc.myapp-vpc.id
-  cidr_block = var.public_subnet_cidr
-  availability_zone = var.avail_zone
-  tags = {
-    Name = "${var.env}-public_subnet"
-  }
+module "subnet" {
+  source              = "./modules/subnet"
+  myapp-vpc-id        = module.vpc.vpc-id.id
+  gw-id               = module.vpc.gw-id.id
+  avail_zone          = var.avail_zone
+  env                 = var.env
+  private_subnet_cidr = var.private_subnet_cidr
+  public_subnet_cidr  = var.public_subnet_cidr
 }
 
-resource "aws_subnet" "myapp_private_subnet" {
-  vpc_id = aws_vpc.myapp-vpc.id
-  cidr_block = var.private_subnet_cidr
-  availability_zone = var.avail_zone
-  tags = {
-    Name = "${var.env}-private_subnet"
-  }
-}
+module "ec2-instance" {
+  source = "./modules/ec2"
 
-resource "aws_internet_gateway" "gw" {
-  vpc_id = aws_vpc.myapp-vpc.id
-
-  tags = {
-    Name = "${var.env}-igw"
-  }
-}
-
-resource "aws_route_table" "public_myapp-route-table" {
-  vpc_id = aws_vpc.myapp-vpc.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.gw.id
-  }
-
-  tags = {
-    Name = "${var.env}-route-table"
-  }
-}
-
-resource "aws_route_table_association" "public_subnet_association" {
-  route_table_id = aws_route_table.public_myapp-route-table.id
-  subnet_id = aws_subnet.myapp_public_subnet.id
-}
-
-resource "aws_route_table" "private_myapp-route-table" {
-  vpc_id = aws_vpc.myapp-vpc.id
-
-  tags = {
-    Name = "${var.env}-route-table"
-  }
-}
-
-resource "aws_route_table_association" "private_subnet_association" {
-  route_table_id = aws_route_table.private_myapp-route-table.id
-  subnet_id = aws_subnet.myapp_private_subnet.id
-}
-
-resource "aws_security_group" "public_ec2_sg" {
-  name        = "${var.env}-public_ec2-sg"
-  description = "Allow SSH and HTTP"
-  vpc_id      = aws_vpc.myapp-vpc.id
-
-  ingress {
-    description      = "SSH to VPC"
-    from_port        = 22
-    to_port          = 22
-    protocol         = "tcp"
-    cidr_blocks      = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description      = "HTTP to VPC"
-    from_port        = 8080
-    to_port          = 8080
-    protocol         = "tcp"
-    cidr_blocks      = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "${var.env}-public_ec2_sg"
-  }
-}
-
-data "aws_ami" "latest_ami_image" {
-  most_recent      = true
-#  name_regex       = "^amzn2-ami-hvm-\\d{3}"
-  owners           = ["amazon"]
-
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
-  }
-
-  filter {
-    name   = "root-device-type"
-    values = ["ebs"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
-resource "aws_instance" "public_ec2" {
-  ami = data.aws_ami.latest_ami_image.id
-  instance_type = var.instance_type
-
-  subnet_id = aws_subnet.myapp_public_subnet.id
-  vpc_security_group_ids = [aws_security_group.public_ec2_sg.id]
-  availability_zone = var.avail_zone
-  associate_public_ip_address = true
-  key_name = aws_key_pair.ssh-key.key_name
-#  user_data = file("entry-script.sh")
-
-  connection {
-    type = "ssh"
-    host = self.public_ip
-    user = "ec2-user"
-    private_key = file(var.private_key_location)
-  }
-  //to copy te file to remote
-  provisioner "file" {
-    source = "entry-script.sh"
-    destination="home/ec2-user/entry-script-on-ec2.sh"
-  }
-
-  provisioner "remote-exec" {
-    script = file("entry-script-on-ec2.sh")
-  }
-
-  provisioner "local-exec" {
-    command = "echo ${self.public_ip} > output.txt"
-  }
-
-  tags = {
-    Name = "${var.env}-public_ec2"
-  }
-}
-
-resource "aws_key_pair" "ssh-key" {
-  key_name = "dev-key"
-  public_key = file(var.public_key_location)
+  avail_zone           = var.avail_zone
+  aws-public-subnet-id = module.subnet.aws-subnet.id
+  env                  = var.env
+  instance_type        = var.instance_type
+  myapp-vpc-id         = module.vpc.vpc-id.id
+  private_key_location = var.private_key_location
+  public_key_location  = var.public_key_location
 }
