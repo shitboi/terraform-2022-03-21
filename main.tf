@@ -10,6 +10,8 @@ terraform {
 # Configure the AWS Provider
 provider "aws" {
   region = var.region
+  access_key=var.aws_access_key
+  secret_key=var.aws_secret_key
 }
 
 module "vpc" {
@@ -36,6 +38,4 @@ module "ec2-instance" {
   env                  = var.env
   instance_type        = var.instance_type
   myapp-vpc-id         = module.vpc.vpc-id.id
-  private_key_location = var.private_key_location
-  public_key_location  = var.public_key_location
 }

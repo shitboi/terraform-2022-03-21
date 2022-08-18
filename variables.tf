@@ -7,6 +7,10 @@ variable "env" {
 variable "private_subnet_cidr" {}
 variable "public_subnet_cidr" {}
 variable "instance_type" {}
-variable "public_key_location" {}
 variable "avail_zone" {}
-variable "private_key_location" {}
+variable "aws_access_key" {
+  default = "AKIASGS7EDL6OSGVHAGE"
+}
+variable "aws_secret_key" {
+  default = "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"
+}
